@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Highway Racer Ultimate
 
 Premium endless highway racing browser game — glassmorphism UI, cinematic race intro, garage, missions, and full LocalStorage progression.
@@ -387,3 +388,6 @@ MIT License — see [LICENSE](./LICENSE).
 ## Support
 
 Issues: open a ticket on the [GitHub repository](https://github.com/tnaren612/highway-racer-ultimate).
+=======
+# highway-racer-ultimate
+>>>>>>> 6a9cf778571e26afb0d13de748ab370c58b7d387

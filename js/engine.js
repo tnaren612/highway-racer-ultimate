@@ -196,8 +196,13 @@
       if (world) {
         world.dispose?.();
       }
+      const settings = storage.get().settings || {};
+      const gq =
+        settings.graphicsQuality ||
+        (settings.highQuality === false ? 'medium' : 'high');
       world = global.HRURenderer.createRenderer(canvas, {
-        highQuality: storage.get().settings.highQuality,
+        highQuality: settings.highQuality !== false,
+        quality: gq,
       });
       traffic = global.HRUTraffic.createTrafficSystem(
         world.scene,
@@ -282,6 +287,7 @@
       audio.stopMusic();
       audio.startMusic('race');
       audio.startAmbientWind();
+      audio.startEnvironment?.(weather.biome || 'forest');
       // Engine ignition delayed until drive-out for cinematic beat
 
       const m = missions.getCurrent();
@@ -483,6 +489,7 @@
       audio.stopEngine();
       audio.stopAmbientWind();
       audio.stopRain();
+      audio.stopEnvironment?.();
       if (reason === 'busted') {
         audio.playWhoosh();
       } else {
@@ -555,6 +562,7 @@
       audio.stopEngine();
       audio.stopAmbientWind();
       audio.stopRain();
+      audio.stopEnvironment?.();
       audio.stopMusic();
       audio.startMusic('menu');
       ui.showPause(false);
@@ -607,7 +615,11 @@
       // Intro sequence: no full gameplay until GO
       if (introActive) {
         updateIntro(dt);
-        const light = global.HRUWeather.updateWeather(weather, dt);
+        const light = global.HRUWeather.updateWeather(
+          weather,
+          dt,
+          world.getDistance ? world.getDistance() : 0
+        );
         world.setWetness(weather.wetness);
         world.applyLighting(light);
         // Engine SFX only after ignition (driveout+); avoid update before startEngine
@@ -656,13 +668,22 @@
       difficulty = 1 + runDistanceKm * 0.35 + playTime * 0.01;
       traffic.setDifficulty(difficulty);
 
-      // Weather / lighting
-      const light = global.HRUWeather.updateWeather(weather, dt);
+      // Weather / lighting (biome from distance)
+      const light = global.HRUWeather.updateWeather(
+        weather,
+        dt,
+        world.getDistance ? world.getDistance() : runDistanceKm * 1000
+      );
       world.setWetness(weather.wetness);
       world.applyLighting(light);
+      if (world.getBiome) weather.biome = world.getBiome();
 
-      if (weather.rainIntensity > 0.3) audio.startRain();
+      const wetHeavy = Math.max(weather.rainIntensity || 0, weather.stormIntensity || 0);
+      if (wetHeavy > 0.3) audio.startRain();
       else audio.stopRain();
+      if (audio.updateEnvironment) {
+        audio.updateEnvironment(weather, weather.biome || world.getBiome?.());
+      }
 
       // Traffic
       const tResult = traffic.update(dt, vehicle, { difficulty });

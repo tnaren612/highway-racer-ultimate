@@ -48,6 +48,7 @@
         muted: false,
         showFps: true,
         highQuality: true,
+        graphicsQuality: 'high',
         fullscreen: false,
         steerSensitivity: 100,
       },

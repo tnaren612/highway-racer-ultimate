@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0a0e17" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="description" content="Highway Racer Ultimate — Premium endless highway racing browser game with garage, missions, and LocalStorage progression. Designed by Narendra Thodeti." />
   <meta name="author" content="Narendra Thodeti" />
   <title>Highway Racer Ultimate | Narendra Thodeti</title>
@@ -22,7 +25,13 @@
   <!-- Loading / Splash -->
   <div id="splash" class="screen active" aria-live="polite">
     <div class="splash-bg"></div>
-    <div class="splash-content">
+    <div class="splash-content onboarding-shell">
+      <ol class="onboarding-steps" aria-label="Getting started">
+        <li class="onboard-step active" data-step="1"><span class="step-num">1</span><span class="step-label">Load</span></li>
+        <li class="onboard-step" data-step="2"><span class="step-num">2</span><span class="step-label">Name</span></li>
+        <li class="onboard-step" data-step="3"><span class="step-num">3</span><span class="step-label">Car</span></li>
+        <li class="onboard-step" data-step="4"><span class="step-num">4</span><span class="step-label">Race</span></li>
+      </ol>
       <p class="splash-edition">PREMIUM EDITION</p>
       <div class="logo-wrap">
         <div class="logo-glow"></div>
@@ -37,53 +46,77 @@
         <div class="load-bar" id="load-bar"></div>
       </div>
       <p class="load-text" id="load-text">Initializing systems…</p>
-      <button type="button" class="btn btn-primary btn-lg hidden" id="btn-enter">ENTER GAME</button>
+      <button type="button" class="btn btn-primary btn-lg btn-enter-game hidden" id="btn-enter">ENTER GAME</button>
+      <p class="splash-hint muted">Works on phone, tablet &amp; desktop</p>
     </div>
   </div>
 
   <!-- Driver Registration (first launch only) -->
-  <div id="register-modal" class="overlay-menu hidden" aria-hidden="true">
-    <div class="overlay-card glass-panel register-card">
+  <div id="register-modal" class="overlay-menu register-overlay hidden" aria-hidden="true">
+    <div class="overlay-card glass-panel register-card" role="dialog" aria-modal="true" aria-labelledby="register-title">
       <div class="register-glow"></div>
+      <ol class="onboarding-steps compact" aria-hidden="true">
+        <li class="onboard-step done"><span class="step-num">1</span></li>
+        <li class="onboard-step active"><span class="step-num">2</span></li>
+        <li class="onboard-step"><span class="step-num">3</span></li>
+        <li class="onboard-step"><span class="step-num">4</span></li>
+      </ol>
       <p class="register-kicker">DRIVER REGISTRATION</p>
-      <h2>Enter Your Name</h2>
+      <h2 id="register-title">Enter Your Name</h2>
       <p class="muted register-sub">Enter your driver name to continue. You must register before choosing a car.</p>
-      <label class="field-label" for="register-name">Driver Name</label>
-      <input
-        type="text"
-        id="register-name"
-        class="premium-input"
-        maxlength="20"
-        minlength="2"
-        placeholder="Type your name…"
-        autocomplete="off"
-        spellcheck="false"
-        required
-      />
-      <p class="char-count"><span id="register-count">0</span>/20 · min 2 characters</p>
-      <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-register-continue" disabled>CONTINUE TO CARS</button>
+      <div class="register-fields">
+        <label class="field-label" for="register-name">Driver Name</label>
+        <input
+          type="text"
+          id="register-name"
+          class="premium-input"
+          maxlength="20"
+          minlength="2"
+          placeholder="Type your name…"
+          autocomplete="nickname"
+          enterkeyhint="done"
+          inputmode="text"
+          spellcheck="false"
+          autocapitalize="words"
+          required
+        />
+        <p class="char-count"><span id="register-count">0</span>/20 · min 2 characters</p>
+      </div>
+      <div class="register-actions">
+        <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-register-continue" disabled>CONTINUE TO CARS</button>
+      </div>
     </div>
   </div>
 
   <!-- Vehicle Selection Garage (pre-race) -->
   <div id="vehicle-select-screen" class="screen panel-screen vehicle-select-screen" aria-hidden="true">
     <div class="panel-frame glass-panel select-frame">
-      <header class="panel-header">
-        <h2>GARAGE</h2>
+      <header class="panel-header select-header">
+        <div class="select-header-left">
+          <h2>GARAGE</h2>
+          <ol class="onboarding-steps compact desktop-only" aria-hidden="true">
+            <li class="onboard-step done"><span class="step-num">1</span></li>
+            <li class="onboard-step done"><span class="step-num">2</span></li>
+            <li class="onboard-step active"><span class="step-num">3</span></li>
+            <li class="onboard-step"><span class="step-num">4</span></li>
+          </ol>
+        </div>
         <div class="panel-header-right">
           <div class="stat-chip"><span class="chip-icon coin-icon">◆</span><span id="select-coins">0</span></div>
-          <div class="stat-chip"><span class="chip-icon xp-icon">◎</span><span id="select-player-name">—</span></div>
+          <div class="stat-chip name-chip"><span class="chip-icon xp-icon">◎</span><span id="select-player-name">—</span></div>
           <button type="button" class="btn btn-ghost btn-close" id="btn-select-back" aria-label="Main menu">✕</button>
         </div>
       </header>
       <div class="select-layout">
         <div class="select-preview-col">
           <div class="select-preview-wrap" id="select-preview-wrap">
-            <canvas id="select-canvas"></canvas>
+            <canvas id="select-canvas" width="640" height="400"></canvas>
             <div class="select-car-badge">
               <span id="select-car-name">Apex Sedan</span>
-              <span class="select-selected-badge hidden" id="select-selected-badge">SELECTED</span>
-              <span class="select-lock-badge hidden" id="select-lock-badge">LOCKED</span>
+              <span class="select-badges">
+                <span class="select-selected-badge hidden" id="select-selected-badge">SELECTED</span>
+                <span class="select-lock-badge hidden" id="select-lock-badge">LOCKED</span>
+              </span>
             </div>
             <div class="garage-carousel-controls select-arrows">
               <button type="button" class="btn btn-secondary btn-round" id="select-prev" aria-label="Previous">‹</button>
@@ -108,78 +141,105 @@
     </div>
   </div>
 
-  <!-- Main Menu -->
-  <div id="main-menu" class="screen" aria-hidden="true">
-    <canvas id="menu-bg-canvas" class="menu-bg-canvas"></canvas>
-    <div class="menu-vignette"></div>
-    <header class="menu-header glass-bar">
-      <div class="brand">
-        <span class="brand-mark">HR</span>
-        <span class="brand-name">Highway Racer <em>Ultimate</em></span>
-      </div>
-      <div class="header-stats">
-        <div class="stat-chip" title="Coins">
-          <span class="chip-icon coin-icon">◆</span>
-          <span id="menu-coins">0</span>
-        </div>
-        <div class="stat-chip" title="XP Level">
-          <span class="chip-icon xp-icon">★</span>
-          <span id="menu-level">1</span>
-        </div>
-      </div>
-    </header>
+  <!-- Main Menu — premium centered glass card (Figma-inspired, original UI) -->
+  <div id="main-menu" class="screen premium-menu" aria-hidden="true">
+    <canvas id="menu-bg-canvas" class="menu-bg-canvas" aria-hidden="true"></canvas>
+    <div class="menu-vignette" aria-hidden="true"></div>
 
-    <nav class="menu-nav glass-panel" role="navigation" aria-label="Main menu">
-      <button type="button" class="menu-btn primary" data-action="play" id="btn-play">
-        <span class="menu-btn-icon">▶</span>
-        <span class="menu-btn-label">START RACE</span>
-        <span class="menu-btn-hint">Select car & hit the highway</span>
-      </button>
-      <button type="button" class="menu-btn" data-action="garage">
-        <span class="menu-btn-icon">▣</span>
-        <span class="menu-btn-label">GARAGE</span>
-        <span class="menu-btn-hint">Cars & upgrades</span>
-      </button>
-      <button type="button" class="menu-btn" data-action="profile">
-        <span class="menu-btn-icon">◎</span>
-        <span class="menu-btn-label">PROFILE</span>
-        <span class="menu-btn-hint">Your racer card</span>
-      </button>
-      <button type="button" class="menu-btn" data-action="achievements">
-        <span class="menu-btn-icon">◆</span>
-        <span class="menu-btn-label">ACHIEVEMENTS</span>
-        <span class="menu-btn-hint">Trophies & goals</span>
-      </button>
-      <button type="button" class="menu-btn" data-action="statistics">
-        <span class="menu-btn-icon">☰</span>
-        <span class="menu-btn-label">STATISTICS</span>
-        <span class="menu-btn-hint">Career totals</span>
-      </button>
-      <button type="button" class="menu-btn" data-action="leaderboard">
-        <span class="menu-btn-icon">▲</span>
-        <span class="menu-btn-label">LEADERBOARD</span>
-        <span class="menu-btn-hint">Local high scores</span>
-      </button>
-      <button type="button" class="menu-btn" data-action="daily">
-        <span class="menu-btn-icon">☀</span>
-        <span class="menu-btn-label">DAILY REWARDS</span>
-        <span class="menu-btn-hint">Claim free coins</span>
-      </button>
-      <button type="button" class="menu-btn" data-action="settings">
-        <span class="menu-btn-icon">⚙</span>
-        <span class="menu-btn-label">SETTINGS</span>
-        <span class="menu-btn-hint">Audio & controls</span>
-      </button>
-      <button type="button" class="menu-btn danger" data-action="exit">
-        <span class="menu-btn-icon">✕</span>
-        <span class="menu-btn-label">EXIT</span>
-        <span class="menu-btn-hint">Close session</span>
-      </button>
-    </nav>
+    <div class="menu-center">
+      <div class="menu-card" role="region" aria-label="Highway Racer Ultimate main menu">
+        <header class="menu-card-header">
+          <p class="menu-kicker">PREMIUM EDITION</p>
+          <h1 class="menu-title">
+            <span class="menu-title-line">HIGHWAY</span>
+            <span class="menu-title-line accent">RACER</span>
+          </h1>
+          <p class="menu-subtitle">ULTIMATE</p>
+          <p class="menu-tagline">Endless highway · Original 3D racing</p>
+        </header>
 
-    <footer class="menu-footer">
-      <span>← → steer · ↑ gas · ↓ brake · Space nitro · P / Esc pause · Gamepad supported</span>
-    </footer>
+        <div class="menu-stats-row" aria-label="Player stats">
+          <div class="menu-stat" title="Best score">
+            <span class="menu-stat-icon" aria-hidden="true">🏆</span>
+            <span class="menu-stat-meta">
+              <span class="menu-stat-label">TROPHY</span>
+              <strong class="menu-stat-value" id="menu-trophy">0</strong>
+            </span>
+          </div>
+          <div class="menu-stat" title="Coins">
+            <span class="menu-stat-icon coin" aria-hidden="true">◆</span>
+            <span class="menu-stat-meta">
+              <span class="menu-stat-label">COINS</span>
+              <strong class="menu-stat-value" id="menu-coins">0</strong>
+            </span>
+          </div>
+          <div class="menu-stat" title="Achievements unlocked">
+            <span class="menu-stat-icon" aria-hidden="true">★</span>
+            <span class="menu-stat-meta">
+              <span class="menu-stat-label">AWARDS</span>
+              <strong class="menu-stat-value"><span id="menu-awards">0</span><span class="menu-stat-den">/<span id="menu-awards-total">12</span></span></strong>
+            </span>
+          </div>
+          <div class="menu-stat menu-stat-level" title="Driver level">
+            <span class="menu-stat-icon xp" aria-hidden="true">◎</span>
+            <span class="menu-stat-meta">
+              <span class="menu-stat-label">LEVEL</span>
+              <strong class="menu-stat-value" id="menu-level">1</strong>
+            </span>
+          </div>
+        </div>
+
+        <nav class="menu-nav" role="navigation" aria-label="Main menu">
+          <button type="button" class="menu-btn primary menu-btn-start" data-action="play" id="btn-play">
+            <span class="menu-btn-icon" aria-hidden="true">▶</span>
+            <span class="menu-btn-label">START RACE</span>
+          </button>
+
+          <div class="menu-btn-grid">
+            <button type="button" class="menu-btn" data-action="garage">
+              <span class="menu-btn-icon" aria-hidden="true">▣</span>
+              <span class="menu-btn-label">GARAGE</span>
+            </button>
+            <button type="button" class="menu-btn" data-action="profile">
+              <span class="menu-btn-icon" aria-hidden="true">◎</span>
+              <span class="menu-btn-label">PROFILE</span>
+            </button>
+            <button type="button" class="menu-btn" data-action="statistics">
+              <span class="menu-btn-icon" aria-hidden="true">☰</span>
+              <span class="menu-btn-label">STATISTICS</span>
+            </button>
+            <button type="button" class="menu-btn" data-action="daily">
+              <span class="menu-btn-icon" aria-hidden="true">☀</span>
+              <span class="menu-btn-label">DAILY</span>
+            </button>
+            <button type="button" class="menu-btn" data-action="achievements">
+              <span class="menu-btn-icon" aria-hidden="true">◆</span>
+              <span class="menu-btn-label">AWARDS</span>
+            </button>
+            <button type="button" class="menu-btn" data-action="settings">
+              <span class="menu-btn-icon" aria-hidden="true">⚙</span>
+              <span class="menu-btn-label">SETTINGS</span>
+            </button>
+          </div>
+
+          <div class="menu-btn-row">
+            <button type="button" class="menu-btn ghost" data-action="leaderboard">
+              <span class="menu-btn-icon" aria-hidden="true">▲</span>
+              <span class="menu-btn-label">LEADERBOARD</span>
+            </button>
+            <button type="button" class="menu-btn ghost danger" data-action="exit">
+              <span class="menu-btn-icon" aria-hidden="true">✕</span>
+              <span class="menu-btn-label">EXIT</span>
+            </button>
+          </div>
+        </nav>
+
+        <footer class="menu-footer">
+          <span class="menu-controls-hint">← → steer · ↑ gas · ↓ brake · Space nitro · P pause</span>
+          <span class="menu-player-name" id="menu-player-name">Driver</span>
+        </footer>
+      </div>
+    </div>
   </div>
 
   <!-- Garage -->
@@ -343,8 +403,18 @@
           <button type="button" class="toggle" id="mute-all" aria-pressed="false"><span class="toggle-knob"></span></button>
         </div>
         <div class="settings-section-label">Graphics</div>
+        <div class="setting-row">
+          <label for="graphics-quality">Quality</label>
+          <select id="graphics-quality" class="premium-select" aria-label="Graphics quality">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high" selected>High</option>
+            <option value="ultra">Ultra</option>
+          </select>
+          <span class="range-val" id="graphics-quality-val">High</span>
+        </div>
         <div class="setting-row toggle-row">
-          <label for="quality-high">High Quality</label>
+          <label for="quality-high">High Quality (legacy)</label>
           <button type="button" class="toggle on" id="quality-high" aria-pressed="true"><span class="toggle-knob"></span></button>
         </div>
         <div class="setting-row toggle-row">

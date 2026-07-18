@@ -371,6 +371,94 @@
     rainNodes = null;
   }
 
+  function playThunder() {
+    playNoiseBurst({ duration: 0.9, filterFreq: 180, type: 'lowpass', gain: 0.55 });
+    setTimeout(() => {
+      playNoiseBurst({ duration: 0.5, filterFreq: 120, type: 'lowpass', gain: 0.35 });
+    }, 80);
+    playTone({ freq: 55, duration: 0.7, type: 'sine', gain: 0.18, slideTo: 28 });
+  }
+
+  /** Soft layered nature ambience (birds / forest / ocean / village) */
+  let envNodes = null;
+  let envBiome = '';
+
+  function stopEnvironment() {
+    if (!envNodes) return;
+    if (envNodes.chirpTimer) clearTimeout(envNodes.chirpTimer);
+    try {
+      envNodes.sources.forEach((s) => s.stop());
+    } catch (_) {
+      /* noop */
+    }
+    envNodes = null;
+    envBiome = '';
+  }
+
+  function startEnvironment(biome = 'forest') {
+    const c = ensureContext();
+    if (!c) return;
+    resume();
+    if (envNodes && envBiome === biome) return;
+    stopEnvironment();
+    envBiome = biome;
+
+    const sources = [];
+    const mix = c.createGain();
+    mix.gain.value = 0.045;
+    mix.connect(sfxGain);
+
+    // Base air / nature noise
+    const noise = c.createBufferSource();
+    noise.buffer = noiseBuffer(2.5);
+    noise.loop = true;
+    const f = c.createBiquadFilter();
+    f.type = biome === 'coastal' ? 'lowpass' : biome === 'city' ? 'highpass' : 'bandpass';
+    f.frequency.value =
+      biome === 'coastal' ? 600 : biome === 'city' ? 1800 : biome === 'forest' ? 2200 : 900;
+    f.Q.value = 0.6;
+    noise.connect(f);
+    f.connect(mix);
+    noise.start();
+    sources.push(noise);
+
+    // Bird-like peeps for nature biomes
+    if (biome === 'forest' || biome === 'countryside' || biome === 'village') {
+      const chirp = () => {
+        if (!envNodes) return;
+        playTone({
+          freq: 1400 + Math.random() * 900,
+          duration: 0.07,
+          type: 'sine',
+          gain: 0.025,
+          slideTo: 1800 + Math.random() * 400,
+        });
+        envNodes.chirpTimer = setTimeout(chirp, 900 + Math.random() * 2200);
+      };
+      envNodes = { sources, mix, f, chirpTimer: setTimeout(chirp, 400) };
+      return;
+    }
+
+    envNodes = { sources, mix, f, chirpTimer: 0 };
+  }
+
+  function updateEnvironment(weather, biome) {
+    if (!weather) return;
+    const b = biome || weather.biome || 'forest';
+    startEnvironment(b);
+    if (!envNodes || !ctx) return;
+    const rain = Math.max(weather.rainIntensity || 0, weather.stormIntensity || 0);
+    const night = weather.phase === 'night' || weather._isNight;
+    // Quieter birds/ambience in heavy rain or night
+    const target = (night ? 0.025 : 0.05) * (1 - rain * 0.55);
+    envNodes.mix.gain.setTargetAtTime(target, ctx.currentTime, 0.4);
+    if (envNodes.f) {
+      const base =
+        b === 'coastal' ? 500 : b === 'city' ? 1600 : b === 'mountain' ? 700 : 2000;
+      envNodes.f.frequency.setTargetAtTime(base + rain * 400, ctx.currentTime, 0.5);
+    }
+  }
+
   function applyFromSettings(settings) {
     if (!settings) return;
     setMasterVolume(settings.masterVolume ?? 80);
@@ -397,6 +485,7 @@
     playMissionComplete,
     playNearMiss,
     playWhoosh,
+    playThunder,
     startEngine,
     updateEngine,
     stopEngine,
@@ -407,6 +496,9 @@
     stopAmbientWind,
     startRain,
     stopRain,
+    startEnvironment,
+    updateEnvironment,
+    stopEnvironment,
     ENGINE_PROFILES,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

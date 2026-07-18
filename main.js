@@ -1,7 +1,7 @@
 /**
  * main.js — Highway Racer Ultimate entry point
  * Bootstraps modules, splash, registration, vehicle select, menu flow.
- * Gameplay/physics/rendering unchanged — menu flow polish only.
+ * Gameplay/physics/rendering unchanged — premium main menu UI + backdrop only.
  */
 (function () {
   'use strict';
@@ -11,8 +11,6 @@
   const UIFactory = window.HRUUI;
   const Garage = window.HRUGarage;
   const EngineFactory = window.HRUEngine;
-  const Renderer = window.HRURenderer;
-
   if (!window.THREE) {
     console.error('Three.js failed to load. Check network / CDN.');
   }
@@ -40,6 +38,15 @@
       onScreenChange: handleScreenChange,
       onMenuAction: handleMenuAction,
       onEnter: onEnterGame,
+      onViewportChange: () => {
+        // Re-fit 3D previews when device rotates or browser chrome changes
+        try {
+          selectCtrl?.resize?.();
+          garageCtrl?.resize?.();
+        } catch (_) {
+          /* ignore */
+        }
+      },
       onBack: (screen) => {
         if (screen === 'main-menu') {
           garageCtrl?.close();
@@ -50,6 +57,8 @@
 
     ui.bindNavigation();
     ui.setupTouchVisibility();
+    ui.updateViewportVars?.();
+    ui.setOnboardingStep?.(1);
     AudioSys.applyFromSettings(Storage.get().settings);
 
     if (window.gsap) {
@@ -99,6 +108,7 @@
     wireDaily();
     wireGameOverlays();
     wireExit();
+    wireMenuRipples();
 
     ui.showEnterButton();
   }
@@ -149,9 +159,11 @@
     AudioSys.resume();
     AudioSys.playClick();
     AudioSys.startMusic('menu');
+    ui.updateViewportVars?.();
 
     // Always: name first, then vehicle selection
     if (!Storage.isProfileRegistered()) {
+      ui.setOnboardingStep?.(2);
       promptDriverName('first');
       return;
     }
@@ -163,12 +175,231 @@
     ui.showRegisterModal(false);
     ui.showScreen('main-menu');
     ui.refreshHeaderStats();
+    refreshPremiumMenuStats();
     startMenuBg();
+  }
+
+  /** Sync trophy / coins / awards / level / name on premium card */
+  function refreshPremiumMenuStats() {
+    const s = Storage.get();
+    if (!s) return;
+    const set = (id, v) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = v;
+    };
+    set('menu-coins', Number(s.coins || 0).toLocaleString());
+    set('menu-level', String(s.level || 1));
+    set('menu-trophy', Number(s.stats?.bestScore || 0).toLocaleString());
+    const unlocked = Object.values(s.achievements || {}).filter((a) => a.unlocked).length;
+    const total =
+      (Storage.ACHIEVEMENT_DEFS && Storage.ACHIEVEMENT_DEFS.length) ||
+      (window.HRUStorage && window.HRUStorage.ACHIEVEMENT_DEFS
+        ? window.HRUStorage.ACHIEVEMENT_DEFS.length
+        : 12);
+    set('menu-awards', String(unlocked));
+    set('menu-awards-total', String(total));
+    set('menu-player-name', (s.playerName && String(s.playerName).trim()) || 'Driver');
+  }
+
+  /**
+   * Original 2D menu backdrop: sky, mountains, road, lighting, particles.
+   * Lightweight canvas path — targets ~60 FPS; respects reduced motion.
+   */
+  function createPremiumMenuBackground(canvas) {
+    if (!canvas) return { start() {}, stop() {} };
+    const ctx = canvas.getContext('2d', { alpha: false });
+    let raf = 0;
+    let running = false;
+    let t0 = 0;
+    let last = 0;
+    const reduceMotion =
+      window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const stars = Array.from({ length: 48 }, () => ({
+      x: Math.random(),
+      y: Math.random() * 0.48,
+      r: 0.4 + Math.random() * 1.4,
+      a: 0.25 + Math.random() * 0.55,
+      tw: Math.random() * Math.PI * 2,
+    }));
+    const cars = Array.from({ length: 3 }, (_, i) => ({
+      lane: i - 1,
+      z: 0.2 + i * 0.25,
+      speed: 0.08 + i * 0.03,
+      hue: 20 + i * 40,
+    }));
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.max(1, window.innerWidth || 1);
+      const h = Math.max(1, window.innerHeight || 1);
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function drawMountains(w, h, baseY, color, amp, seed) {
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      ctx.lineTo(0, baseY);
+      for (let x = 0; x <= w; x += 12) {
+        const n =
+          Math.sin(x * 0.008 + seed) * amp +
+          Math.sin(x * 0.02 + seed * 1.7) * amp * 0.45 +
+          Math.sin(x * 0.045 + seed) * amp * 0.2;
+        ctx.lineTo(x, baseY - n);
+      }
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    function frame(now) {
+      if (!running) return;
+      raf = requestAnimationFrame(frame);
+      // Cap work near 60 FPS
+      if (now - last < 15) return;
+      last = now;
+      const t = reduceMotion ? 0 : (now - t0) * 0.001;
+      const w = window.innerWidth || canvas.clientWidth;
+      const h = window.innerHeight || canvas.clientHeight;
+
+      // Sky gradient — dynamic day/dusk lighting
+      const phase = (Math.sin(t * 0.12) + 1) * 0.5;
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, `hsl(${215 + phase * 12}, 55%, ${10 + phase * 6}%)`);
+      sky.addColorStop(0.45, `hsl(${28 + phase * 10}, 70%, ${14 + phase * 8}%)`);
+      sky.addColorStop(0.62, `hsl(${18}, 55%, ${12 + phase * 4}%)`);
+      sky.addColorStop(1, '#05080f');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
+
+      // Sun / glow
+      const sx = w * (0.72 + Math.sin(t * 0.08) * 0.04);
+      const sy = h * (0.38 - phase * 0.06);
+      const sun = ctx.createRadialGradient(sx, sy, 0, sx, sy, w * 0.35);
+      sun.addColorStop(0, `rgba(255,${170 + phase * 40 | 0},80,${0.35 + phase * 0.15})`);
+      sun.addColorStop(0.35, `rgba(255,120,40,${0.12 + phase * 0.08})`);
+      sun.addColorStop(1, 'transparent');
+      ctx.fillStyle = sun;
+      ctx.fillRect(0, 0, w, h);
+
+      // Stars (dimmer at “day”)
+      stars.forEach((s) => {
+        const tw = 0.35 + Math.sin(t * 1.5 + s.tw) * 0.25;
+        ctx.globalAlpha = s.a * tw * (1 - phase * 0.65);
+        ctx.fillStyle = '#dff6ff';
+        ctx.beginPath();
+        ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      // Far mountains
+      const horizon = h * 0.55;
+      drawMountains(w, h, horizon + 8, 'rgba(18, 28, 48, 0.95)', h * 0.09, t * 0.05 + 1);
+      drawMountains(w, h, horizon + 28, 'rgba(12, 18, 32, 0.98)', h * 0.07, t * 0.08 + 3);
+
+      // Ground plane
+      const ground = ctx.createLinearGradient(0, horizon, 0, h);
+      ground.addColorStop(0, '#1a1420');
+      ground.addColorStop(0.35, '#0c1018');
+      ground.addColorStop(1, '#05070c');
+      ctx.fillStyle = ground;
+      ctx.fillRect(0, horizon, w, h - horizon);
+
+      // Road
+      const roadTop = horizon + 2;
+      const roadHalfTop = w * 0.06;
+      const roadHalfBot = w * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5 - roadHalfTop, roadTop);
+      ctx.lineTo(w * 0.5 + roadHalfTop, roadTop);
+      ctx.lineTo(w * 0.5 + roadHalfBot, h);
+      ctx.lineTo(w * 0.5 - roadHalfBot, h);
+      ctx.closePath();
+      const roadGrad = ctx.createLinearGradient(0, roadTop, 0, h);
+      roadGrad.addColorStop(0, '#2a2f3a');
+      roadGrad.addColorStop(1, '#12151c');
+      ctx.fillStyle = roadGrad;
+      ctx.fill();
+
+      // Road edge lines
+      ctx.strokeStyle = 'rgba(255, 200, 80, 0.35)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5 - roadHalfTop, roadTop);
+      ctx.lineTo(w * 0.5 - roadHalfBot, h);
+      ctx.moveTo(w * 0.5 + roadHalfTop, roadTop);
+      ctx.lineTo(w * 0.5 + roadHalfBot, h);
+      ctx.stroke();
+
+      // Center dashes scrolling
+      const scroll = (t * 90) % 40;
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([14, 22]);
+      ctx.lineDashOffset = -scroll;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5, roadTop);
+      ctx.lineTo(w * 0.5, h);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Distant traffic blips
+      if (!reduceMotion) {
+        cars.forEach((c) => {
+          c.z += c.speed * 0.008;
+          if (c.z > 1) c.z = 0.05;
+          const p = c.z * c.z;
+          const y = roadTop + (h - roadTop) * p;
+          const half = roadHalfTop + (roadHalfBot - roadHalfTop) * p;
+          const x = w * 0.5 + c.lane * half * 0.35;
+          const size = 4 + p * 18;
+          ctx.fillStyle = `hsla(${c.hue},70%,55%,${0.35 + p * 0.5})`;
+          ctx.fillRect(x - size * 0.6, y - size * 0.35, size * 1.2, size * 0.55);
+        });
+      }
+
+      // Horizon haze
+      const haze = ctx.createLinearGradient(0, horizon - 40, 0, horizon + 60);
+      haze.addColorStop(0, 'transparent');
+      haze.addColorStop(0.5, `rgba(255,140,60,${0.08 + phase * 0.06})`);
+      haze.addColorStop(1, 'transparent');
+      ctx.fillStyle = haze;
+      ctx.fillRect(0, horizon - 40, w, 100);
+    }
+
+    function onResize() {
+      resize();
+    }
+
+    return {
+      start() {
+        if (running) return;
+        running = true;
+        t0 = performance.now();
+        last = 0;
+        resize();
+        window.addEventListener('resize', onResize, { passive: true });
+        window.addEventListener('orientationchange', onResize, { passive: true });
+        raf = requestAnimationFrame(frame);
+      },
+      stop() {
+        running = false;
+        cancelAnimationFrame(raf);
+        window.removeEventListener('resize', onResize);
+        window.removeEventListener('orientationchange', onResize);
+      },
+    };
   }
 
   function startMenuBg() {
     if (!menuBg) {
-      menuBg = Renderer.createMenuBackground(document.getElementById('menu-bg-canvas'));
+      const canvas = document.getElementById('menu-bg-canvas');
+      menuBg = createPremiumMenuBackground(canvas);
     }
     menuBg.start();
   }
@@ -177,10 +408,33 @@
     menuBg?.stop();
   }
 
+  function wireMenuRipples() {
+    const nav = document.querySelector('#main-menu .menu-nav');
+    if (!nav || nav.dataset.rippleBound) return;
+    nav.dataset.rippleBound = '1';
+    nav.addEventListener(
+      'pointerdown',
+      (e) => {
+        const btn = e.target.closest('.menu-btn');
+        if (!btn || !nav.contains(btn)) return;
+        const rect = btn.getBoundingClientRect();
+        btn.style.setProperty('--ripple-x', `${e.clientX - rect.left}px`);
+        btn.style.setProperty('--ripple-y', `${e.clientY - rect.top}px`);
+        btn.classList.remove('rippling');
+        // reflow to restart animation
+        void btn.offsetWidth;
+        btn.classList.add('rippling');
+        setTimeout(() => btn.classList.remove('rippling'), 560);
+      },
+      { passive: true }
+    );
+  }
+
   function handleScreenChange(id) {
     if (id === 'main-menu') {
       startMenuBg();
       ui.refreshHeaderStats();
+      refreshPremiumMenuStats();
     }
     if (id === 'game-screen' || id === 'garage-screen' || id === 'vehicle-select-screen') {
       stopMenuBg();
@@ -292,12 +546,22 @@
     }
     stopMenuBg();
     ui.showRegisterModal(false);
+    ui.setOnboardingStep?.(3);
+    ui.updateViewportVars?.();
     ui.showScreen('vehicle-select-screen');
     const selected = Storage.get().selectedCar || 'sedan';
-    selectCtrl.open(selected);
-    const color = Storage.getSelectedColor();
-    selectCtrl.setPaint(color);
-    refreshSelectUI();
+    // Defer open one frame so CSS grid/flex has real canvas size
+    requestAnimationFrame(() => {
+      selectCtrl.open(selected);
+      const color = Storage.getSelectedColor();
+      selectCtrl.setPaint(color);
+      refreshSelectUI();
+      // Second settle after fonts/layout on mobile
+      setTimeout(() => {
+        selectCtrl?.resize?.();
+        refreshSelectUI();
+      }, 80);
+    });
   }
 
   function refreshSelectUI() {
@@ -438,6 +702,7 @@
       return;
     }
     stopMenuBg();
+    ui.updateViewportVars?.();
     ui.showScreen('garage-screen');
     ui.refreshHeaderStats();
     // Always restore profile: selected vehicle + paint + upgrades
@@ -447,13 +712,16 @@
     if (prog.paint !== color) {
       Storage.setPaint(selected, color);
     }
-    garageCtrl.open(selected);
-    garageCtrl.setPaint(color);
-    if (prog.wheels != null) {
-      garageCtrl.rebuildWheels(prog.wheels || 0);
+    requestAnimationFrame(() => {
+      garageCtrl.open(selected);
       garageCtrl.setPaint(color);
-    }
-    refreshGarageUI();
+      if (prog.wheels != null) {
+        garageCtrl.rebuildWheels(prog.wheels || 0);
+        garageCtrl.setPaint(color);
+      }
+      refreshGarageUI();
+      setTimeout(() => garageCtrl?.resize?.(), 80);
+    });
   }
 
   function refreshGarageUI() {
@@ -613,6 +881,19 @@
     toggle('mute-all', 'muted');
     toggle('show-fps', 'showFps');
     toggle('quality-high', 'highQuality');
+
+    document.getElementById('graphics-quality')?.addEventListener('change', (e) => {
+      AudioSys.playClick();
+      const val = e.target.value || 'high';
+      Storage.updateSettings({
+        graphicsQuality: val,
+        highQuality: val === 'high' || val === 'ultra',
+      });
+      const lab = document.getElementById('graphics-quality-val');
+      if (lab) lab.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+      ui.setToggle('quality-high', val === 'high' || val === 'ultra');
+      ui.toast(`Graphics: ${val.toUpperCase()} (applies next race)`);
+    });
 
     document.getElementById('toggle-fullscreen')?.addEventListener('click', async () => {
       AudioSys.playClick();

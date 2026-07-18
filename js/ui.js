@@ -24,6 +24,67 @@
 
     let currentScreen = 'splash';
     let toastTimer = 0;
+    let viewportBound = false;
+
+    /** Keep layout stable across mobile browser chrome / soft keyboard */
+    function updateViewportVars() {
+      const root = document.documentElement;
+      const h = Math.round(
+        (global.visualViewport && global.visualViewport.height) ||
+          global.innerHeight ||
+          root.clientHeight ||
+          800
+      );
+      const offsetTop =
+        global.visualViewport && typeof global.visualViewport.offsetTop === 'number'
+          ? global.visualViewport.offsetTop
+          : 0;
+      root.style.setProperty('--app-height', `${Math.round(global.innerHeight || h)}px`);
+      root.style.setProperty('--vv-height', `${h}px`);
+      // Extra bottom inset when keyboard shrinks visual viewport
+      const kb = Math.max(0, (global.innerHeight || h) - h - offsetTop);
+      root.style.setProperty('--vv-offset', `${Math.round(kb)}px`);
+      document.body?.classList.toggle('kb-open', kb > 80);
+    }
+
+    function bindViewport() {
+      if (viewportBound) return;
+      viewportBound = true;
+      updateViewportVars();
+      const onResize = () => {
+        updateViewportVars();
+        if (hooks.onViewportChange) hooks.onViewportChange();
+      };
+      global.addEventListener('resize', onResize, { passive: true });
+      global.addEventListener('orientationchange', () => {
+        setTimeout(onResize, 120);
+        setTimeout(onResize, 360);
+      });
+      if (global.visualViewport) {
+        global.visualViewport.addEventListener('resize', onResize);
+        global.visualViewport.addEventListener('scroll', onResize);
+      }
+    }
+
+    function isCoarsePointer() {
+      try {
+        return (
+          global.matchMedia('(pointer: coarse)').matches ||
+          'ontouchstart' in global ||
+          (navigator.maxTouchPoints || 0) > 0
+        );
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function setOnboardingStep(step) {
+      document.querySelectorAll('.onboarding-steps:not(.compact) .onboard-step').forEach((el) => {
+        const n = Number(el.dataset.step);
+        el.classList.toggle('active', n === step);
+        el.classList.toggle('done', n < step);
+      });
+    }
 
     function showScreen(id) {
       const next = screens[id];
@@ -33,20 +94,41 @@
         const active = key === id;
         el.classList.toggle('active', active);
         el.setAttribute('aria-hidden', active ? 'false' : 'true');
+        // Clear leftover GSAP transforms that can break fixed layouts
+        if (!active && el.style) {
+          el.style.opacity = '';
+          el.style.transform = '';
+        }
       });
       currentScreen = id;
-      if (global.gsap && next) {
+      updateViewportVars();
+
+      if (id === 'splash') setOnboardingStep(1);
+      if (id === 'vehicle-select-screen') setOnboardingStep(3);
+      if (id === 'game-screen') setOnboardingStep(4);
+      if (id === 'main-menu') setOnboardingStep(1);
+
+      const reduceMotion =
+        global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (global.gsap && next && !reduceMotion) {
         gsap.fromTo(
           next,
           { opacity: 0 },
-          { opacity: 1, duration: 0.4, ease: 'power2.out', overwrite: 'auto' }
+          { opacity: 1, duration: 0.32, ease: 'power2.out', overwrite: 'auto' }
         );
         const frame = next.querySelector('.panel-frame, .menu-nav, .splash-content');
         if (frame) {
           gsap.fromTo(
             frame,
-            { y: 18, opacity: 0.85 },
-            { y: 0, opacity: 1, duration: 0.45, ease: 'power3.out', overwrite: 'auto' }
+            { y: 12, opacity: 0.9 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.36,
+              ease: 'power3.out',
+              overwrite: 'auto',
+              clearProps: 'transform',
+            }
           );
         }
       }
@@ -83,25 +165,51 @@
       if (!el) return;
       el.classList.toggle('hidden', !show);
       el.setAttribute('aria-hidden', show ? 'false' : 'true');
+      updateViewportVars();
       if (show) {
+        setOnboardingStep(2);
         const input = $('#register-name');
         if (input) {
           if (!opts.keepValue) input.value = '';
-          // Ensure Continue starts disabled until user types a name
-          setTimeout(() => {
-            input.focus();
-            input.select?.();
-            updateRegisterValidity();
-          }, 80);
+          updateRegisterValidity();
+          // Desktop: auto-focus. Mobile: avoid keyboard jump until user taps.
+          const focusDelay = isCoarsePointer() ? 0 : 100;
+          if (!isCoarsePointer()) {
+            setTimeout(() => {
+              try {
+                input.focus({ preventScroll: true });
+                input.select?.();
+              } catch (_) {
+                input.focus();
+              }
+              updateRegisterValidity();
+            }, focusDelay);
+          }
         }
         updateRegisterValidity();
-        if (global.gsap) {
+        // Scroll card into view (keyboard-safe)
+        requestAnimationFrame(() => {
+          const card = el.querySelector('.register-card');
+          card?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+        });
+        const reduceMotion =
+          global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (global.gsap && !reduceMotion) {
           gsap.fromTo(
             '.register-card',
-            { y: 28, opacity: 0, scale: 0.96 },
-            { y: 0, opacity: 1, scale: 1, duration: 0.45, ease: 'power3.out' }
+            { y: 20, opacity: 0, scale: 0.98 },
+            {
+              y: 0,
+              opacity: 1,
+              scale: 1,
+              duration: 0.38,
+              ease: 'power3.out',
+              clearProps: 'transform',
+            }
           );
         }
+      } else {
+        document.body?.classList.remove('kb-open');
       }
     }
 
@@ -432,8 +540,15 @@
       setRange('steer-sens', s.steerSensitivity, 'steer-sens-val');
       setToggle('mute-all', s.muted);
       setToggle('show-fps', s.showFps);
-      setToggle('quality-high', s.highQuality);
+      setToggle('quality-high', s.highQuality !== false);
       setToggle('toggle-fullscreen', !!document.fullscreenElement || !!s.fullscreen);
+      const gq = document.getElementById('graphics-quality');
+      const gqLab = document.getElementById('graphics-quality-val');
+      const quality = s.graphicsQuality || (s.highQuality === false ? 'medium' : 'high');
+      if (gq) gq.value = quality;
+      if (gqLab) {
+        gqLab.textContent = quality.charAt(0).toUpperCase() + quality.slice(1);
+      }
     }
 
     function setToggle(id, on) {
@@ -694,6 +809,9 @@
       });
     }
 
+    // Init viewport as soon as UI is created
+    bindViewport();
+
     return {
       showScreen,
       getScreen,
@@ -730,6 +848,10 @@
       showExitModal,
       setupTouchVisibility,
       bindNavigation,
+      bindViewport,
+      updateViewportVars,
+      setOnboardingStep,
+      isCoarsePointer,
       $,
       $$,
     };

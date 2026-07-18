@@ -11,39 +11,95 @@
     { id: 'van', color: 0xe8e0d0, hw: 1.1, hd: 2.5, speed: 0.45, weight: 1.5 },
     { id: 'sport_ai', color: 0xcc2233, hw: 0.9, hd: 2.0, speed: 0.85, weight: 0.9 },
     { id: 'truck_ai', color: 0x556070, hw: 1.2, hd: 3.2, speed: 0.35, weight: 2.2 },
+    { id: 'bus_ai', color: 0xf0c040, hw: 1.15, hd: 3.8, speed: 0.4, weight: 2.4 },
+    { id: 'moto_ai', color: 0x222222, hw: 0.45, hd: 1.4, speed: 0.95, weight: 0.4 },
+    { id: 'ambulance', color: 0xffffff, hw: 1.05, hd: 2.6, speed: 0.75, weight: 1.3, emergency: true },
+    { id: 'tractor', color: 0x2d6b2e, hw: 1.15, hd: 2.0, speed: 0.28, weight: 2.0 },
   ];
 
   function buildTrafficMesh(THREE, type) {
     const g = new THREE.Group();
     const bodyMat = new THREE.MeshStandardMaterial({
       color: type.color,
-      metalness: 0.5,
-      roughness: 0.45,
+      metalness: type.id === 'moto_ai' ? 0.7 : 0.5,
+      roughness: 0.42,
     });
     const len = type.hd * 1.9;
+
+    if (type.id === 'moto_ai') {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, len * 0.85), bodyMat);
+      body.position.y = 0.55;
+      body.castShadow = true;
+      g.add(body);
+      const rider = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x334455 })
+      );
+      rider.position.set(0, 0.95, -0.1);
+      g.add(rider);
+      const wMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+      const wGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.12, 10);
+      [len * 0.28, -len * 0.28].forEach((z) => {
+        const w = new THREE.Mesh(wGeo, wMat);
+        w.rotation.z = Math.PI / 2;
+        w.position.set(0, 0.28, z);
+        g.add(w);
+      });
+      return g;
+    }
+
+    const bodyH = type.id === 'bus_ai' ? 1.1 : type.id === 'truck_ai' ? 0.7 : 0.5;
     const body = new THREE.Mesh(
-      new THREE.BoxGeometry(type.hw * 1.85, 0.5, len),
+      new THREE.BoxGeometry(type.hw * 1.85, bodyH, len),
       bodyMat
     );
-    body.position.y = 0.5;
+    body.position.y = bodyH * 0.55 + 0.25;
     body.castShadow = true;
     g.add(body);
 
-    const cabinH = type.id === 'truck_ai' ? 0.7 : 0.45;
-    const cabin = new THREE.Mesh(
-      new THREE.BoxGeometry(type.hw * 1.5, cabinH, len * 0.4),
-      new THREE.MeshStandardMaterial({ color: 0x1a222c, metalness: 0.3, roughness: 0.25 })
-    );
-    cabin.position.set(0, 0.85 + cabinH * 0.2, type.id === 'truck_ai' ? len * 0.15 : -len * 0.05);
-    g.add(cabin);
+    if (type.id === 'bus_ai') {
+      const windows = new THREE.Mesh(
+        new THREE.BoxGeometry(type.hw * 1.7, 0.45, len * 0.7),
+        new THREE.MeshStandardMaterial({ color: 0x88ccee, metalness: 0.3, roughness: 0.2, transparent: true, opacity: 0.7 })
+      );
+      windows.position.set(0, 1.35, 0);
+      g.add(windows);
+    } else if (type.id !== 'tractor') {
+      const cabinH = type.id === 'truck_ai' ? 0.7 : 0.45;
+      const cabin = new THREE.Mesh(
+        new THREE.BoxGeometry(type.hw * 1.5, cabinH, len * 0.4),
+        new THREE.MeshStandardMaterial({ color: 0x1a222c, metalness: 0.3, roughness: 0.25 })
+      );
+      cabin.position.set(0, 0.85 + cabinH * 0.2, type.id === 'truck_ai' ? len * 0.15 : -len * 0.05);
+      g.add(cabin);
+    }
+
+    if (type.emergency) {
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(1.0, 0.14, 0.3),
+        new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.7 })
+      );
+      bar.position.set(0, 1.45, 0);
+      g.add(bar);
+    }
+
+    if (type.id === 'tractor') {
+      const cabin = new THREE.Mesh(
+        new THREE.BoxGeometry(type.hw * 1.2, 0.9, len * 0.35),
+        new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.2, roughness: 0.6 })
+      );
+      cabin.position.set(0, 1.2, len * 0.15);
+      g.add(cabin);
+    }
 
     const wMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-    const wGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.22, 10);
+    const wR = type.id === 'tractor' ? 0.42 : 0.3;
+    const wGeo = new THREE.CylinderGeometry(wR, wR, 0.22, 10);
     [
-      [-type.hw * 0.9, 0.3, len * 0.3],
-      [type.hw * 0.9, 0.3, len * 0.3],
-      [-type.hw * 0.9, 0.3, -len * 0.3],
-      [type.hw * 0.9, 0.3, -len * 0.3],
+      [-type.hw * 0.9, wR, len * 0.3],
+      [type.hw * 0.9, wR, len * 0.3],
+      [-type.hw * 0.9, wR, -len * 0.3],
+      [type.hw * 0.9, wR, -len * 0.3],
     ].forEach((p) => {
       const w = new THREE.Mesh(wGeo, wMat);
       w.rotation.z = Math.PI / 2;

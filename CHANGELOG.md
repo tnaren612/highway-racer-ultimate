@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.2.1] — 2026-07-18
+
+### Improved (environment only)
+
+- Countryside highway art direction: vibrant greens, rolling multi-layer hills, soft fog
+- Visual 4-lane asphalt with wide shoulders (physics/gameplay lanes unchanged)
+- Asymmetric roadsides: left farms/flowers/lakes/fences; right forest/pines/palms/windmills/rivers
+- Vegetation set: oak, pine, palm, coconut, mango, bamboo, bushes, wildflowers, gardens
+- Scenic details: cabins, colorful houses, farms, bus stops, petrol, signs, lights, bridges, waterfalls
+- Animation: tree sway, windmills, birds, butterflies, flowing water, waterfall shimmer
+- Wet road reflections + puddles; rainbow after rain (existing weather systems)
+
+## [1.2.0] — 2026-07-18
+
+### Added
+
+- Living procedural world biomes and roadside systems
+- Expanded traffic vehicle types
+- Cinematic weather + graphics quality presets
+- Ambient environment audio and particles
+
+---
+
 ## [1.1.0] — 2026-07-18
 
 ### Added
@@ -30,6 +53,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Garage always restores selected vehicle, paint, and upgrades
 - Splash / ENTER GAME → name → garage → START RACE flow
 - LocalStorage profile flags and validation (min 2-character name)
+- **Device-adaptive getting started**: `100dvh` / visualViewport, safe-area padding, onboarding step strip
+- Registration modal keyboard-safe (no forced focus jump on touch; sticky CTA)
+- Vehicle select stacks on phones, sticky START RACE, horizontal class chips, canvas ResizeObserver
+- Landscape short-viewport and coarse-pointer (touch) hit-target rules
 
 ### Fixed
 

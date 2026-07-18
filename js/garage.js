@@ -309,11 +309,21 @@
     let rotating = true;
     let index = 0;
     let active = false;
+    let lastW = 0;
+    let lastH = 0;
+    let ro = null;
 
     function init() {
       if (!canvas || !THREE || renderer) return;
-      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      const viewW = global.innerWidth || 1024;
+      const dpr = Math.min(window.devicePixelRatio || 1, viewW < 700 ? 1.5 : 2);
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: dpr < 1.75,
+        alpha: true,
+        powerPreference: 'high-performance',
+      });
+      renderer.setPixelRatio(dpr);
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
       camera.position.set(3.5, 2.2, 6.5);
@@ -349,15 +359,30 @@
       ring.rotation.x = Math.PI / 2;
       ring.position.y = 0.02;
       scene.add(ring);
+
+      // Keep canvas sharp when panel resizes (rotation / device change)
+      if (typeof ResizeObserver !== 'undefined' && canvas.parentElement) {
+        ro = new ResizeObserver(() => {
+          if (active) resize(true);
+        });
+        ro.observe(canvas.parentElement);
+      }
     }
 
-    function resize() {
+    function resize(force) {
       if (!renderer || !canvas) return;
-      const w = canvas.clientWidth || 400;
-      const h = canvas.clientHeight || 300;
+      const w = Math.max(1, Math.floor(canvas.clientWidth || canvas.parentElement?.clientWidth || 400));
+      const h = Math.max(1, Math.floor(canvas.clientHeight || canvas.parentElement?.clientHeight || 300));
+      if (!force && w === lastW && h === lastH) return;
+      lastW = w;
+      lastH = h;
       renderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
+      if (camera) {
+        camera.aspect = w / Math.max(1, h);
+        // Slightly wider FOV on very short canvases so the car stays framed
+        camera.fov = h < 200 ? 48 : h < 280 ? 44 : 40;
+        camera.updateProjectionMatrix();
+      }
     }
 
     function showCar(carId) {
@@ -418,6 +443,12 @@
     function open(carId) {
       active = true;
       showCar(carId || (global.HRUStorage && global.HRUStorage.get().selectedCar) || 'sedan');
+      // Double-pass resize after layout paint (mobile flex/grid settle)
+      resize(true);
+      requestAnimationFrame(() => {
+        resize(true);
+        requestAnimationFrame(() => resize(true));
+      });
       cancelAnimationFrame(raf);
       loop();
     }
@@ -425,6 +456,8 @@
     function close() {
       active = false;
       cancelAnimationFrame(raf);
+      lastW = 0;
+      lastH = 0;
     }
 
     function next() {
@@ -455,6 +488,7 @@
       rebuildWheels,
       current,
       currentIndex,
+      resize: () => resize(true),
       buildCarMesh,
       getCar,
       getAll,

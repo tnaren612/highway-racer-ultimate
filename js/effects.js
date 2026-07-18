@@ -149,6 +149,96 @@
       };
     }
 
+    function spawnAmbient(style, weather, playerSpeed) {
+      const rainI = weather ? weather.rainIntensity : 0;
+      const storm = weather ? weather.stormIntensity || 0 : 0;
+      const isNight = weather && (weather.phase === 'night' || weather._isNight);
+      if (style === 'leaf' && rainI < 0.3 && Math.random() < 0.4) {
+        spawn({
+          x: (Math.random() - 0.5) * 30,
+          y: 4 + Math.random() * 8,
+          z: -10 - Math.random() * 40,
+          vx: (Math.random() - 0.5) * 2,
+          vy: -0.5 - Math.random(),
+          vz: playerSpeed * 0.15,
+          life: 2 + Math.random() * 2,
+          r: 0.2 + Math.random() * 0.3,
+          g: 0.55 + Math.random() * 0.3,
+          b: 0.15,
+          size: 0.25 + Math.random() * 0.2,
+          gravity: -0.4,
+        });
+      }
+      if (style === 'pollen' && rainI < 0.2) {
+        spawn({
+          x: (Math.random() - 0.5) * 20,
+          y: 1 + Math.random() * 3,
+          z: -5 - Math.random() * 30,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: 0.2,
+          vz: playerSpeed * 0.1,
+          life: 1.5,
+          r: 1,
+          g: 0.9,
+          b: 0.5,
+          size: 0.12,
+          gravity: 0.05,
+        });
+      }
+      if (style === 'firefly' && isNight && rainI < 0.4) {
+        spawn({
+          x: (Math.random() - 0.5) * 25,
+          y: 0.8 + Math.random() * 2.5,
+          z: -8 - Math.random() * 35,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: Math.sin(Math.random() * 6) * 0.3,
+          vz: playerSpeed * 0.08,
+          life: 1.2 + Math.random(),
+          r: 0.7,
+          g: 1,
+          b: 0.3,
+          size: 0.15,
+          gravity: 0,
+        });
+      }
+      if (style === 'spray' && rainI > 0.4 && playerSpeed > 15) {
+        burst({ x: (Math.random() - 0.5) * 2.5, y: 0.15, z: 1.2 }, 3, 'dust');
+      }
+      if (style === 'mist' && ((weather && weather.mistDensity) || 0) > 0.3) {
+        spawn({
+          x: (Math.random() - 0.5) * 40,
+          y: 0.5 + Math.random() * 2,
+          z: -20 - Math.random() * 50,
+          vx: 0,
+          vy: 0.1,
+          vz: playerSpeed * 0.12,
+          life: 2,
+          r: 0.75,
+          g: 0.8,
+          b: 0.85,
+          size: 0.8,
+          gravity: 0,
+        });
+      }
+      if (storm > 0.5 && Math.random() < 0.05) {
+        // extra heavy rain sparkle
+        spawn({
+          x: (Math.random() - 0.5) * 40,
+          y: 10 + Math.random() * 15,
+          z: -Math.random() * 60,
+          vx: 0,
+          vy: -20,
+          vz: playerSpeed * 0.2,
+          life: 0.4,
+          r: 0.7,
+          g: 0.85,
+          b: 1,
+          size: 0.2,
+          gravity: -10,
+        });
+      }
+    }
+
     function update(dt, weather, playerSpeed) {
       // Particles
       let idx = 0;
@@ -182,19 +272,19 @@
       geo.attributes.position.needsUpdate = true;
       geo.attributes.color.needsUpdate = true;
 
-      // Rain
-      const rainI = weather ? weather.rainIntensity : 0;
-      rainMat.opacity = rainI * 0.65;
+      // Rain (+ heavier in storm)
+      const rainI = weather ? Math.max(weather.rainIntensity || 0, (weather.stormIntensity || 0) * 1.15) : 0;
+      rainMat.opacity = rainI * 0.7;
       if (rainI > 0.05) {
         const arr = rainGeo.attributes.position.array;
-        const fall = (18 + playerSpeed * 0.5) * dt;
+        const fall = (18 + rainI * 10 + playerSpeed * 0.5) * dt;
         for (let i = 0; i < rainCount; i++) {
           arr[i * 3 + 1] -= fall;
           arr[i * 3 + 2] += playerSpeed * dt * 0.8;
           if (arr[i * 3 + 1] < 0) {
-            arr[i * 3] = (Math.random() - 0.5) * 60;
-            arr[i * 3 + 1] = 15 + Math.random() * 25;
-            arr[i * 3 + 2] = -Math.random() * 100;
+            arr[i * 3] = (Math.random() - 0.5) * 70;
+            arr[i * 3 + 1] = 15 + Math.random() * 28;
+            arr[i * 3 + 2] = -Math.random() * 110;
           }
           if (arr[i * 3 + 2] > 10) arr[i * 3 + 2] = -100;
         }
@@ -205,6 +295,13 @@
       if (playerSpeed > 20 && rainI < 0.2 && Math.random() < dt * 8) {
         burst({ x: (Math.random() - 0.5) * 2, y: 0.1, z: 1.5 }, 2, 'dust');
       }
+
+      // Ambient living world particles (budgeted)
+      if (Math.random() < dt * 6) spawnAmbient('leaf', weather, playerSpeed);
+      if (Math.random() < dt * 4) spawnAmbient('pollen', weather, playerSpeed);
+      if (Math.random() < dt * 3) spawnAmbient('firefly', weather, playerSpeed);
+      if (Math.random() < dt * 5) spawnAmbient('spray', weather, playerSpeed);
+      if (Math.random() < dt * 3) spawnAmbient('mist', weather, playerSpeed);
 
       shake = Math.max(0, shake - shakeDecay * dt);
     }
