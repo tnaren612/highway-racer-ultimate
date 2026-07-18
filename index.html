@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0e17" />
+  <meta name="description" content="Highway Racer Ultimate — Premium endless highway racing browser game with garage, missions, and LocalStorage progression. Designed by Narendra Thodeti." />
+  <meta name="author" content="Narendra Thodeti" />
+  <title>Highway Racer Ultimate | Narendra Thodeti</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Persistent designer watermark (all screens) -->
+  <div id="designer-watermark" class="designer-watermark" aria-hidden="true">
+    <span class="wm-label">Designed by</span>
+    <span class="wm-name">Narendra Thodeti</span>
+  </div>
+
+  <!-- Loading / Splash -->
+  <div id="splash" class="screen active" aria-live="polite">
+    <div class="splash-bg"></div>
+    <div class="splash-content">
+      <p class="splash-edition">PREMIUM EDITION</p>
+      <div class="logo-wrap">
+        <div class="logo-glow"></div>
+        <h1 class="game-logo" id="game-logo">
+          <span class="logo-line">HIGHWAY</span>
+          <span class="logo-line accent">RACER</span>
+          <span class="logo-sub">ULTIMATE</span>
+        </h1>
+      </div>
+      <p class="splash-tagline">The endless premium highway experience</p>
+      <div class="load-bar-wrap glass-panel">
+        <div class="load-bar" id="load-bar"></div>
+      </div>
+      <p class="load-text" id="load-text">Initializing systems…</p>
+      <button type="button" class="btn btn-primary btn-lg hidden" id="btn-enter">ENTER GAME</button>
+    </div>
+  </div>
+
+  <!-- Driver Registration (first launch only) -->
+  <div id="register-modal" class="overlay-menu hidden" aria-hidden="true">
+    <div class="overlay-card glass-panel register-card">
+      <div class="register-glow"></div>
+      <p class="register-kicker">DRIVER REGISTRATION</p>
+      <h2>Enter Your Name</h2>
+      <p class="muted register-sub">Enter your driver name to continue. You must register before choosing a car.</p>
+      <label class="field-label" for="register-name">Driver Name</label>
+      <input
+        type="text"
+        id="register-name"
+        class="premium-input"
+        maxlength="20"
+        minlength="2"
+        placeholder="Type your name…"
+        autocomplete="off"
+        spellcheck="false"
+        required
+      />
+      <p class="char-count"><span id="register-count">0</span>/20 · min 2 characters</p>
+      <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-register-continue" disabled>CONTINUE TO CARS</button>
+    </div>
+  </div>
+
+  <!-- Vehicle Selection Garage (pre-race) -->
+  <div id="vehicle-select-screen" class="screen panel-screen vehicle-select-screen" aria-hidden="true">
+    <div class="panel-frame glass-panel select-frame">
+      <header class="panel-header">
+        <h2>GARAGE</h2>
+        <div class="panel-header-right">
+          <div class="stat-chip"><span class="chip-icon coin-icon">◆</span><span id="select-coins">0</span></div>
+          <div class="stat-chip"><span class="chip-icon xp-icon">◎</span><span id="select-player-name">—</span></div>
+          <button type="button" class="btn btn-ghost btn-close" id="btn-select-back" aria-label="Main menu">✕</button>
+        </div>
+      </header>
+      <div class="select-layout">
+        <div class="select-preview-col">
+          <div class="select-preview-wrap" id="select-preview-wrap">
+            <canvas id="select-canvas"></canvas>
+            <div class="select-car-badge">
+              <span id="select-car-name">Apex Sedan</span>
+              <span class="select-selected-badge hidden" id="select-selected-badge">SELECTED</span>
+              <span class="select-lock-badge hidden" id="select-lock-badge">LOCKED</span>
+            </div>
+            <div class="garage-carousel-controls select-arrows">
+              <button type="button" class="btn btn-secondary btn-round" id="select-prev" aria-label="Previous">‹</button>
+              <div class="garage-dots" id="select-dots"></div>
+              <button type="button" class="btn btn-secondary btn-round" id="select-next" aria-label="Next">›</button>
+            </div>
+          </div>
+          <div class="select-class-row" id="select-class-row" aria-label="Vehicle classes"></div>
+        </div>
+        <div class="select-side-col">
+          <div class="select-stat-cards" id="select-stat-cards"></div>
+          <div class="color-section select-colors">
+            <label>Paint Selection</label>
+            <div class="color-picker paint-picker-pro" id="select-color-picker"></div>
+          </div>
+          <div class="select-actions">
+            <button type="button" class="btn btn-secondary btn-block hidden" id="btn-select-unlock">UNLOCK</button>
+            <button type="button" class="btn btn-primary btn-lg btn-block btn-start-race" id="btn-start-race">START RACE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Menu -->
+  <div id="main-menu" class="screen" aria-hidden="true">
+    <canvas id="menu-bg-canvas" class="menu-bg-canvas"></canvas>
+    <div class="menu-vignette"></div>
+    <header class="menu-header glass-bar">
+      <div class="brand">
+        <span class="brand-mark">HR</span>
+        <span class="brand-name">Highway Racer <em>Ultimate</em></span>
+      </div>
+      <div class="header-stats">
+        <div class="stat-chip" title="Coins">
+          <span class="chip-icon coin-icon">◆</span>
+          <span id="menu-coins">0</span>
+        </div>
+        <div class="stat-chip" title="XP Level">
+          <span class="chip-icon xp-icon">★</span>
+          <span id="menu-level">1</span>
+        </div>
+      </div>
+    </header>
+
+    <nav class="menu-nav glass-panel" role="navigation" aria-label="Main menu">
+      <button type="button" class="menu-btn primary" data-action="play" id="btn-play">
+        <span class="menu-btn-icon">▶</span>
+        <span class="menu-btn-label">START RACE</span>
+        <span class="menu-btn-hint">Select car & hit the highway</span>
+      </button>
+      <button type="button" class="menu-btn" data-action="garage">
+        <span class="menu-btn-icon">▣</span>
+        <span class="menu-btn-label">GARAGE</span>
+        <span class="menu-btn-hint">Cars & upgrades</span>
+      </button>
+      <button type="button" class="menu-btn" data-action="profile">
+        <span class="menu-btn-icon">◎</span>
+        <span class="menu-btn-label">PROFILE</span>
+        <span class="menu-btn-hint">Your racer card</span>
+      </button>
+      <button type="button" class="menu-btn" data-action="achievements">
+        <span class="menu-btn-icon">◆</span>
+        <span class="menu-btn-label">ACHIEVEMENTS</span>
+        <span class="menu-btn-hint">Trophies & goals</span>
+      </button>
+      <button type="button" class="menu-btn" data-action="statistics">
+        <span class="menu-btn-icon">☰</span>
+        <span class="menu-btn-label">STATISTICS</span>
+        <span class="menu-btn-hint">Career totals</span>
+      </button>
+      <button type="button" class="menu-btn" data-action="leaderboard">
+        <span class="menu-btn-icon">▲</span>
+        <span class="menu-btn-label">LEADERBOARD</span>
+        <span class="menu-btn-hint">Local high scores</span>
+      </button>
+      <button type="button" class="menu-btn" data-action="daily">
+        <span class="menu-btn-icon">☀</span>
+        <span class="menu-btn-label">DAILY REWARDS</span>
+        <span class="menu-btn-hint">Claim free coins</span>
+      </button>
+      <button type="button" class="menu-btn" data-action="settings">
+        <span class="menu-btn-icon">⚙</span>
+        <span class="menu-btn-label">SETTINGS</span>
+        <span class="menu-btn-hint">Audio & controls</span>
+      </button>
+      <button type="button" class="menu-btn danger" data-action="exit">
+        <span class="menu-btn-icon">✕</span>
+        <span class="menu-btn-label">EXIT</span>
+        <span class="menu-btn-hint">Close session</span>
+      </button>
+    </nav>
+
+    <footer class="menu-footer">
+      <span>← → steer · ↑ gas · ↓ brake · Space nitro · P / Esc pause · Gamepad supported</span>
+    </footer>
+  </div>
+
+  <!-- Garage -->
+  <div id="garage-screen" class="screen panel-screen" aria-hidden="true">
+    <div class="panel-frame glass-panel">
+      <header class="panel-header">
+        <h2>GARAGE</h2>
+        <div class="panel-header-right">
+          <div class="stat-chip"><span class="chip-icon coin-icon">◆</span><span id="garage-coins">0</span></div>
+          <button type="button" class="btn btn-ghost btn-close" data-back="main-menu" aria-label="Close">✕</button>
+        </div>
+      </header>
+      <div class="garage-layout">
+        <div class="garage-preview-wrap">
+          <canvas id="garage-canvas"></canvas>
+          <div class="garage-car-name" id="garage-car-name">Apex Sedan</div>
+          <div class="garage-carousel-controls">
+            <button type="button" class="btn btn-secondary btn-round" id="garage-prev" aria-label="Previous car">‹</button>
+            <div class="garage-dots" id="garage-dots"></div>
+            <button type="button" class="btn btn-secondary btn-round" id="garage-next" aria-label="Next car">›</button>
+          </div>
+        </div>
+        <div class="garage-side">
+          <div class="stats-list" id="garage-stats"></div>
+          <div class="color-section">
+            <label>Paint</label>
+            <div class="color-picker" id="color-picker"></div>
+          </div>
+          <div class="wheel-section">
+            <label>Wheels</label>
+            <div class="wheel-picker" id="wheel-picker"></div>
+          </div>
+          <div class="upgrade-section">
+            <label>Upgrades</label>
+            <div class="upgrade-list" id="upgrade-list"></div>
+          </div>
+          <div class="garage-actions">
+            <button type="button" class="btn btn-primary btn-block" id="btn-select-car">SELECT VEHICLE</button>
+            <button type="button" class="btn btn-secondary btn-block hidden" id="btn-buy-car">PURCHASE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile -->
+  <div id="profile-screen" class="screen panel-screen" aria-hidden="true">
+    <div class="panel-frame glass-panel">
+      <header class="panel-header">
+        <h2>PROFILE</h2>
+        <button type="button" class="btn btn-ghost btn-close" data-back="main-menu" aria-label="Close">✕</button>
+      </header>
+      <div class="profile-body">
+        <div class="avatar-card glass-card">
+          <div class="avatar-ring"><div class="avatar-core">HR</div></div>
+          <h3 id="profile-name">Night Rider</h3>
+          <p class="muted">Level <span id="profile-level">1</span> · <span id="profile-title">Rookie</span></p>
+          <div class="xp-bar-wrap">
+            <div class="xp-bar" id="profile-xp-bar"></div>
+          </div>
+          <p class="xp-label"><span id="profile-xp">0</span> / <span id="profile-xp-next">100</span> XP</p>
+        </div>
+        <div class="profile-grid">
+          <div class="glass-card info-card"><span class="label">Best Score</span><strong id="profile-best">0</strong></div>
+          <div class="glass-card info-card"><span class="label">Total Distance</span><strong id="profile-distance">0 km</strong></div>
+          <div class="glass-card info-card"><span class="label">Cars Owned</span><strong id="profile-cars">1</strong></div>
+          <div class="glass-card info-card"><span class="label">Achievements</span><strong id="profile-achs">0</strong></div>
+        </div>
+        <div class="name-edit glass-card">
+          <label for="player-name-input">Display Name</label>
+          <div class="input-row">
+            <input type="text" id="player-name-input" maxlength="20" placeholder="Enter name" autocomplete="off" />
+            <button type="button" class="btn btn-secondary" id="btn-save-name">SAVE</button>
+          </div>
+          <p class="muted" style="margin-top:0.5rem;font-size:0.85rem">Or use Change Driver Name in Settings.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Achievements -->
+  <div id="achievements-screen" class="screen panel-screen" aria-hidden="true">
+    <div class="panel-frame glass-panel">
+      <header class="panel-header">
+        <h2>ACHIEVEMENTS</h2>
+        <button type="button" class="btn btn-ghost btn-close" data-back="main-menu" aria-label="Close">✕</button>
+      </header>
+      <div class="achievements-grid" id="achievements-grid"></div>
+    </div>
+  </div>
+
+  <!-- Statistics -->
+  <div id="statistics-screen" class="screen panel-screen" aria-hidden="true">
+    <div class="panel-frame glass-panel">
+      <header class="panel-header">
+        <h2>STATISTICS</h2>
+        <button type="button" class="btn btn-ghost btn-close" data-back="main-menu" aria-label="Close">✕</button>
+      </header>
+      <div class="stats-grid" id="statistics-grid"></div>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="leaderboard-screen" class="screen panel-screen" aria-hidden="true">
+    <div class="panel-frame glass-panel">
+      <header class="panel-header">
+        <h2>LEADERBOARD</h2>
+        <button type="button" class="btn btn-ghost btn-close" data-back="main-menu" aria-label="Close">✕</button>
+      </header>
+      <div class="leaderboard-list" id="leaderboard-list"></div>
+    </div>
+  </div>
+
+  <!-- Daily Rewards -->
+  <div id="daily-screen" class="screen panel-screen" aria-hidden="true">
+    <div class="panel-frame glass-panel">
+      <header class="panel-header">
+        <h2>DAILY REWARDS</h2>
+        <button type="button" class="btn btn-ghost btn-close" data-back="main-menu" aria-label="Close">✕</button>
+      </header>
+      <div class="daily-body">
+        <p class="muted center">Log in each day to claim increasing rewards. Streak resets after a missed day.</p>
+        <div class="daily-grid" id="daily-grid"></div>
+        <button type="button" class="btn btn-primary btn-lg" id="btn-claim-daily">CLAIM REWARD</button>
+        <p class="daily-status" id="daily-status"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="settings-screen" class="screen panel-screen" aria-hidden="true">
+    <div class="panel-frame glass-panel">
+      <header class="panel-header">
+        <h2>SETTINGS</h2>
+        <button type="button" class="btn btn-ghost btn-close" data-back="main-menu" aria-label="Close">✕</button>
+      </header>
+      <div class="settings-body">
+        <div class="settings-section-label">Player</div>
+        <div class="setting-row settings-action-row">
+          <label>Change Driver Name</label>
+          <button type="button" class="btn btn-secondary" id="btn-change-name">CHANGE DRIVER NAME</button>
+        </div>
+        <div class="settings-section-label">Audio</div>
+        <div class="setting-row">
+          <label for="vol-master">Master Volume</label>
+          <input type="range" id="vol-master" min="0" max="100" value="80" />
+          <span class="range-val" id="vol-master-val">80%</span>
+        </div>
+        <div class="setting-row">
+          <label for="vol-music">Music</label>
+          <input type="range" id="vol-music" min="0" max="100" value="60" />
+          <span class="range-val" id="vol-music-val">60%</span>
+        </div>
+        <div class="setting-row">
+          <label for="vol-sfx">Sound</label>
+          <input type="range" id="vol-sfx" min="0" max="100" value="85" />
+          <span class="range-val" id="vol-sfx-val">85%</span>
+        </div>
+        <div class="setting-row toggle-row">
+          <label for="mute-all">Mute All</label>
+          <button type="button" class="toggle" id="mute-all" aria-pressed="false"><span class="toggle-knob"></span></button>
+        </div>
+        <div class="settings-section-label">Graphics</div>
+        <div class="setting-row toggle-row">
+          <label for="quality-high">High Quality</label>
+          <button type="button" class="toggle on" id="quality-high" aria-pressed="true"><span class="toggle-knob"></span></button>
+        </div>
+        <div class="setting-row toggle-row">
+          <label for="show-fps">Show FPS</label>
+          <button type="button" class="toggle on" id="show-fps" aria-pressed="true"><span class="toggle-knob"></span></button>
+        </div>
+        <div class="setting-row toggle-row">
+          <label for="toggle-fullscreen">Fullscreen</label>
+          <button type="button" class="toggle" id="toggle-fullscreen" aria-pressed="false"><span class="toggle-knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <label for="steer-sens">Steering Sensitivity</label>
+          <input type="range" id="steer-sens" min="40" max="160" value="100" />
+          <span class="range-val" id="steer-sens-val">100%</span>
+        </div>
+        <div class="controls-help glass-card">
+          <h4>Controls</h4>
+          <ul>
+            <li><kbd>W</kbd> / <kbd>↑</kbd> Accelerate</li>
+            <li><kbd>S</kbd> / <kbd>↓</kbd> Brake</li>
+            <li><kbd>A</kbd> / <kbd>←</kbd> Steer left</li>
+            <li><kbd>D</kbd> / <kbd>→</kbd> Steer right</li>
+            <li><kbd>Space</kbd> Nitro</li>
+            <li><kbd>P</kbd> / <kbd>Esc</kbd> Pause</li>
+            <li>Gamepad: stick + A/B/X/Y</li>
+            <li>Touch: virtual pad + nitro button</li>
+          </ul>
+        </div>
+        <button type="button" class="btn btn-ghost btn-block danger-text" id="btn-reset-save">Reset Progress</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game HUD overlay -->
+  <div id="game-screen" class="screen game-screen" aria-hidden="true">
+    <canvas id="game-canvas"></canvas>
+
+    <div id="hud" class="hud">
+      <div class="hud-top">
+        <div class="hud-left glass-hud">
+          <div class="speedo-wrap">
+            <canvas id="speedo-canvas" width="160" height="160"></canvas>
+            <div class="speed-digital">
+              <span id="hud-speed">0</span>
+              <small>KM/H</small>
+            </div>
+          </div>
+          <div class="gear-badge" id="hud-gear">N</div>
+        </div>
+        <div class="hud-center">
+          <div class="mission-tracker glass-hud" id="mission-tracker">
+            <div class="mission-title" id="mission-title">MISSION</div>
+            <div class="mission-desc" id="mission-desc">Survive 2 km</div>
+            <div class="mission-bar-wrap"><div class="mission-bar" id="mission-bar"></div></div>
+          </div>
+          <div class="combo-display hidden" id="combo-display">
+            <span class="combo-mult" id="combo-mult">x2</span>
+            <span class="combo-label">COMBO</span>
+          </div>
+        </div>
+        <div class="hud-right-col">
+          <button type="button" class="btn-hud-pause glass-hud" id="btn-hud-pause" aria-label="Pause" title="Pause (P)">❚❚</button>
+          <div class="hud-right glass-hud">
+            <div class="hud-stat"><span class="h-label">SCORE</span><span id="hud-score">0</span></div>
+            <div class="hud-stat"><span class="h-label">DIST</span><span id="hud-dist">0.0 km</span></div>
+            <div class="hud-stat coin"><span class="h-label">COINS</span><span id="hud-coins">0</span></div>
+            <div class="hud-stat"><span class="h-label">XP</span><span id="hud-xp">0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-bottom">
+        <div class="meters glass-hud">
+          <div class="meter fuel">
+            <span class="m-label">FUEL</span>
+            <div class="m-bar"><div class="m-fill" id="fuel-fill"></div></div>
+          </div>
+          <div class="meter nitro">
+            <span class="m-label">NITRO</span>
+            <div class="m-bar"><div class="m-fill" id="nitro-fill"></div></div>
+          </div>
+          <div class="meter durability">
+            <span class="m-label">ARMOR</span>
+            <div class="m-bar"><div class="m-fill" id="armor-fill"></div></div>
+          </div>
+        </div>
+        <div class="hud-meta">
+          <span id="hud-weather">Clear</span>
+          <span id="hud-fps" class="fps">60 FPS</span>
+        </div>
+      </div>
+
+      <div id="notify-stack" class="notify-stack" aria-live="polite"></div>
+      <div id="police-banner" class="police-banner hidden">⚠ POLICE CHASE</div>
+      <div id="fps-counter" class="fps-counter">60</div>
+
+      <!-- Race countdown -->
+      <div id="countdown-overlay" class="countdown-overlay hidden" aria-live="assertive">
+        <span id="countdown-text" class="countdown-text">3</span>
+      </div>
+
+      <!-- Touch controls -->
+      <div id="touch-controls" class="touch-controls hidden">
+        <div class="touch-pad" id="touch-pad">
+          <div class="touch-stick" id="touch-stick"></div>
+        </div>
+        <button type="button" class="touch-btn nitro-btn" id="touch-nitro">N₂O</button>
+        <button type="button" class="touch-btn brake-btn" id="touch-brake">BRAKE</button>
+      </div>
+    </div>
+
+    <!-- Pause -->
+    <div id="pause-menu" class="overlay-menu hidden">
+      <div class="overlay-card glass-panel">
+        <h2>PAUSED</h2>
+        <button type="button" class="btn btn-primary btn-block" id="btn-resume">RESUME</button>
+        <button type="button" class="btn btn-secondary btn-block" id="btn-pause-settings">SETTINGS</button>
+        <button type="button" class="btn btn-ghost btn-block" id="btn-quit-run">QUIT TO MENU</button>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameover-menu" class="overlay-menu hidden">
+      <div class="overlay-card glass-panel gameover-card">
+        <h2 id="gameover-title">RUN ENDED</h2>
+        <div class="go-stats">
+          <div><span>Score</span><strong id="go-score">0</strong></div>
+          <div><span>Distance</span><strong id="go-dist">0 km</strong></div>
+          <div><span>Coins</span><strong id="go-coins">0</strong></div>
+          <div><span>XP Earned</span><strong id="go-xp">0</strong></div>
+          <div><span>Best Combo</span><strong id="go-combo">x1</strong></div>
+          <div><span>Near Misses</span><strong id="go-nearmiss">0</strong></div>
+        </div>
+        <div class="go-actions">
+          <button type="button" class="btn btn-primary btn-block" id="btn-go-continue">CONTINUE</button>
+          <button type="button" class="btn btn-secondary btn-block" id="btn-go-garage">GARAGE</button>
+          <button type="button" class="btn btn-secondary btn-block" id="btn-go-menu">MAIN MENU</button>
+          <button type="button" class="btn btn-primary btn-block btn-glow" id="btn-retry">PLAY AGAIN</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <!-- Exit confirm -->
+  <div id="exit-modal" class="overlay-menu hidden">
+    <div class="overlay-card glass-panel">
+      <h2>EXIT GAME?</h2>
+      <p class="muted">Progress is saved automatically. Close this tab to leave.</p>
+      <button type="button" class="btn btn-primary btn-block" id="btn-exit-cancel">STAY</button>
+      <button type="button" class="btn btn-ghost btn-block" id="btn-exit-confirm">CLOSE TAB</button>
+    </div>
+  </div>
+
+  <!-- Libs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <!-- Game modules (order matters) -->
+  <script src="js/storage.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/traffic.js"></script>
+  <script src="js/missions.js"></script>
+  <script src="js/garage.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
